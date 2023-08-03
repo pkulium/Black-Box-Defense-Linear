@@ -236,7 +236,7 @@ def main():
 
         # classificaiton / reconstruction
         if args.train_objective == 'classification':
-            if args.model_type == 'AE_DS':
+            if args.model_type == 'AE_DS' or args.model_type == 'AE_DS_LINEAR':
                 train_loss = train_ae(train_loader, encoder, decoder, denoiser, criterion, optimizer, epoch,
                                       args.noise_sd,
                                       clf)
