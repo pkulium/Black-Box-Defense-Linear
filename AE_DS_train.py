@@ -178,11 +178,11 @@ def main():
         d = torch.inverse(c)
 
         # Define the encoder and decoder
-        encoder = nn.Linear(784, 28, bias=False)  # Assuming no bias
+        encoder = nn.Linear(784, 28, bias=False).cuda()  # Assuming no bias
         decoder = nn.Sequential(
             nn.Linear(28, 784, bias=False),  # Assuming no bias
             nn.Linear(784, 784, bias=False)  # Assuming no bias
-        )
+        ).cuda()
 
         # Set the weights of the encoder and decoder
         with torch.no_grad():
