@@ -29,7 +29,7 @@ parser.add_argument('--ground_truth', default='original_output', type=str,
                     choices=['original_output', 'labels'])
 
 # Dataset
-parser.add_argument('--dataset', type=str, choices=DATASETS)
+parser.add_argument('--dataset', type=str, default='cifar10', choices=DATASETS)
 parser.add_argument('--data_min', default=-2.5090184, type=float, help='minimum value of training data')
 parser.add_argument('--data_max', default=3.3369503, type=float, help='maximum value of training data')
 
@@ -38,7 +38,7 @@ parser.add_argument('--measurement', default=576, type=int, metavar='N', help='t
 
 
 # Optimization Method
-parser.add_argument('--optimization_method', default='FO', type=str,
+parser.add_argument('--optimization_method', default='ZO', type=str,
                     help="FO: First-Order (White-Box), ZO: Zeroth-Order (Black-box)",
                     choices=['FO', 'ZO'])
 parser.add_argument('--zo_method', default='RGE', type=str,
@@ -50,26 +50,25 @@ parser.add_argument('--mu', default=0.005, type=float, metavar='N',
                     help='Smoothing Parameter')
 
 # Model type
-parser.add_argument('--model_type', default='AE_DS', type=str,
+parser.add_argument('--model_type', default='AE_DS_LINEAR', type=str,
                     help="Denoiser + (AutoEncoder) + classifier/reconstructor",
-                    choices=['DS', 'AE_DS'])
-parser.add_argument('--arch', type=str, choices=DENOISERS_ARCHITECTURES)
-parser.add_argument('--encoder_arch', type=str, default='cifar_encoder', choices=AUTOENCODER_ARCHITECTURES)
-parser.add_argument('--decoder_arch', type=str, default='cifar_decoder', choices=AUTOENCODER_ARCHITECTURES)
-parser.add_argument('--classifier', default='', type=str,
+                    choices=['DS', 'AE_DS', 'AE_DS_LINEAR'])
+parser.add_argument('--arch', default='cifar_dncnn', type=str, choices=DENOISERS_ARCHITECTURES)
+parser.add_argument('--encoder_arch', type=str, default='cifar_encoder_192_24', choices=AUTOENCODER_ARCHITECTURES)
+parser.add_argument('--decoder_arch', type=str, default='cifar_decoder_192_24', choices=AUTOENCODER_ARCHITECTURES)
+parser.add_argument('--classifier', default='./trained_models/CIFAR-10/Classifiers/resnet110.pth.tar', type=str,
                     help='path to the classifier used with the `classificaiton`'
                          'or `stability` objectives of the denoiser.')
-parser.add_argument('--pretrained-denoiser', default='', type=str, help='path to a pretrained denoiser')
-parser.add_argument('--pretrained-encoder', default='', type=str, help='path to a pretrained encoder')
-parser.add_argument('--pretrained-decoder', default='', type=str, help='path to a pretrained decoder')
-
+parser.add_argument('--pretrained_denoiser', default='./trained_models/CIFAR-10/AE_DS/AE_DS_FO_lr-3_Adam200SGD600_lr-3_step200/best_denoiser.pth.tar', type=str, help='path to a pretrained denoiser')
+parser.add_argument('--pretrained_encoder', default='./trained_models/CIFAR-10/AE_DS/AE_DS_FO_lr-3_Adam200SGD600_lr-3_step200/best_encoder.pth.tar', type=str, help='path to a pretrained encoder')
+parser.add_argument('--pretrained_decoder', default='./trained_models/CIFAR-10/AE_DS/AE_DS_FO_lr-3_Adam200SGD600_lr-3_step200/best_decoder.pth.tar', type=str, help='path to a pretrained decoder') 
 # Model to be trained
-parser.add_argument('--train_method', default='whole', type=str,
+parser.add_argument('--train_method', default='part', type=str,
                     help="*part*: only denoiser parameters would be optimized; *whole*: denoiser and encoder parameters would be optimized, *whole_plus*: denoiser and auto-encoder parameters would be optimized",
                     choices=['part', 'whole', 'whole_plus'])
 
 # Training Setting
-parser.add_argument('--outdir', type=str, help='folder to save denoiser and training log)')
+parser.add_argument('--outdir', type=str, default='ZO_AE_DS_lr-3_q192_Coord', help='folder to save denoiser and training log)')
 parser.add_argument('--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--optimizer', default='Adam', type=str,
@@ -169,6 +168,29 @@ def main():
             decoder.load_state_dict(checkpoint['state_dict'])
         else:
             decoder = get_architecture(args.decoder_arch, args.dataset)
+    elif args.model_type == 'AE_DS_LINEAR':
+        import torch
+        import torch.nn as nn
+
+        # Define a, b, c, and d
+        a = torch.rand(784, 28)
+        b = torch.rand(28, 784)
+        lambda_value = 1e-5  # Set this to your desired value
+        c = a @ b + torch.eye(784) * lambda_value
+        d = torch.inverse(c)
+
+        # Define the encoder and decoder
+        encoder = nn.Linear(784, 28, bias=False)  # Assuming no bias
+        decoder = nn.Sequential(
+            nn.Linear(28, 784, bias=False),  # Assuming no bias
+            nn.Linear(784, 784, bias=False)  # Assuming no bias
+        )
+
+        # Set the weights of the encoder and decoder
+        with torch.no_grad():
+            encoder.weight.copy_(a.T)  # Transpose a
+            decoder[0].weight.copy_(b.T)  # Transpose b
+            decoder[1].weight.copy_(d.T)  # Transpose d
 
     # c) Classifier / Reconstructor
     checkpoint = torch.load(args.classifier)
