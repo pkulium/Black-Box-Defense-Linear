@@ -607,7 +607,7 @@ def train_ae(loader: DataLoader, encoder: torch.nn.Module, decoder: torch.nn.Mod
                     # Forward Inference (Original)
                     original_pre = classifier(inputs).argmax(1).detach().clone()
 
-                    recon_pre = classifier(decoder(recon))
+                    recon_pre = classifier(decoder(recon).reshape(batch_size, channel, h, w))
                     loss_0 = criterion(recon_pre, original_pre)
 
                     # record original loss
