@@ -583,7 +583,7 @@ def train_ae(loader: DataLoader, encoder: torch.nn.Module, decoder: torch.nn.Mod
         w = recon.size()[3]
         d = channel * h * w
     
-        recon = recon.view(batch_size, -1) 
+        recon = recon.reshape(batch_size, -1) 
         recon = encoder(recon)
 
         if args.optimization_method == 'FO':
