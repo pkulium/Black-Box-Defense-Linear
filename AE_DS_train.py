@@ -171,17 +171,17 @@ def main():
     elif args.model_type == 'AE_DS_LINEAR':
         import torch.nn as nn
         # Define a, b, c, and d
-        a = torch.rand(784, 28)
-        b = torch.rand(28, 784)
+        a = torch.rand(3072, 256)
+        b = torch.rand(256, 3072)
         lambda_value = 1e-5  # Set this to your desired value
-        c = a @ b + torch.eye(784) * lambda_value
+        c = a @ b + torch.eye(3072) * lambda_value
         d = torch.inverse(c)
 
         # Define the encoder and decoder
-        encoder = nn.Linear(784, 28, bias=False).cuda()  # Assuming no bias
+        encoder = nn.Linear(3072, 256, bias=False).cuda()  # Assuming no bias
         decoder = nn.Sequential(
-            nn.Linear(28, 784, bias=False),  # Assuming no bias
-            nn.Linear(784, 784, bias=False)  # Assuming no bias
+            nn.Linear(256, 3072, bias=False),  # Assuming no bias
+            nn.Linear(3072, 3072, bias=False)  # Assuming no bias
         ).cuda()
 
         # Set the weights of the encoder and decoder
@@ -576,6 +576,14 @@ def train_ae(loader: DataLoader, encoder: torch.nn.Module, decoder: torch.nn.Mod
         noise = torch.randn_like(inputs, device='cuda') * noise_sd
 
         recon = denoiser(inputs + noise)
+         # Obtain the Shape of Inputs (Batch_size x Channel x H x W)
+        batch_size = recon.size()[0]
+        channel = recon.size()[1]
+        h = recon.size()[2]
+        w = recon.size()[3]
+        d = channel * h * w
+    
+        recon = recon.view(batch_size, -1) 
         recon = encoder(recon)
 
         if args.optimization_method == 'FO':
@@ -589,13 +597,6 @@ def train_ae(loader: DataLoader, encoder: torch.nn.Module, decoder: torch.nn.Mod
         elif args.optimization_method == 'ZO':
             recon.requires_grad_(True)
             recon.retain_grad()
-
-            # Obtain the Shape of Inputs (Batch_size x Channel x H x W)
-            batch_size = recon.size()[0]
-            channel = recon.size()[1]
-            h = recon.size()[2]
-            w = recon.size()[3]
-            d = channel * h * w
 
             if args.zo_method =='RGE':
                 with torch.no_grad():
