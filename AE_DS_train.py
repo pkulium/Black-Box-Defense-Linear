@@ -169,9 +169,7 @@ def main():
         else:
             decoder = get_architecture(args.decoder_arch, args.dataset)
     elif args.model_type == 'AE_DS_LINEAR':
-        import torch
         import torch.nn as nn
-
         # Define a, b, c, and d
         a = torch.rand(784, 28)
         b = torch.rand(28, 784)
